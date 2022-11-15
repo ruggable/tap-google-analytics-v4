@@ -5,13 +5,14 @@ import sys
 from pathlib import Path
 from typing import List, Tuple
 
-from googleapiclient.discovery import build
-from oauth2client.client import GoogleCredentials
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.credentials import Credentials
 from singer_sdk import Stream, Tap
 from singer_sdk import typing as th  # JSON schema typing helpers
 
 from tap_google_analytics.client import GoogleAnalyticsStream
+
+from google.analytics.data_v1beta import BetaAnalyticsDataClient
+from google.analytics.data_v1beta.types import GetMetadataRequest
 
 SCOPES = ["https://www.googleapis.com/auth/analytics.readonly"]
 
@@ -29,48 +30,34 @@ class TapGoogleAnalytics(Tap):
             required=True,
         ),
         th.Property(
-            "view_id",
+            "property_id",
             th.StringType,
-            description="Google Analytics View ID",
+            description="Google Analytics Property ID",
             required=True,
-        ),
-        # Service Account
-        th.Property(
-            "client_secrets",
-            th.ObjectType(),
-            description="Google Analytics Client Secrets Dictionary",
-        ),
-        th.Property(
-            "key_file_location",
-            th.StringType,
-            description="File Path to Google Analytics Client Secrets",
         ),
         # OAuth
         th.Property(
-            "oauth_credentials",
-            th.ObjectType(
-                th.Property(
-                    "access_token",
-                    th.StringType,
-                    description="Google Analytics Access Token",
-                ),
-                th.Property(
-                    "refresh_token",
-                    th.StringType,
-                    description="Google Analytics Refresh Token",
-                ),
-                th.Property(
-                    "client_id",
-                    th.StringType,
-                    description="Google Analytics Client ID",
-                ),
-                th.Property(
-                    "client_secret",
-                    th.StringType,
-                    description="Google Analytics Client Secret",
-                ),
-            ),
-            description="Google Analytics OAuth Credentials",
+            "access_token",
+            th.StringType,
+            description="Google Analytics Access Token",
+        ),
+        th.Property(
+            "refresh_token",
+            th.StringType,
+            required=True,
+            description="Google Analytics Refresh Token",
+        ),
+        th.Property(
+            "client_id",
+            th.StringType,
+            required=True,
+            description="Google Analytics Client ID",
+        ),
+        th.Property(
+            "client_secret",
+            th.StringType,
+            required=True,
+            description="Google Analytics Client Secret",
         ),
         # Optional
         th.Property(
@@ -86,36 +73,13 @@ class TapGoogleAnalytics(Tap):
     ).to_dict()
 
     def _initialize_credentials(self):
-        if self.config.get("oauth_credentials"):
-            return GoogleCredentials(
-                access_token=self.config["oauth_credentials"]["access_token"],
-                refresh_token=self.config["oauth_credentials"]["refresh_token"],
-                client_id=self.config["oauth_credentials"]["client_id"],
-                client_secret=self.config["oauth_credentials"]["client_secret"],
-                token_expiry=None,  # let the library refresh the token if it is expired
-                token_uri="https://accounts.google.com/o/oauth2/token",
-                user_agent="tap-google-analytics (via singer.io)",
-            )
-        elif self.config.get("key_file_location"):
-            return ServiceAccountCredentials.from_json_keyfile_name(
-                self.config["key_file_location"], SCOPES
-            )
-        elif self.config.get("client_secrets"):
-            return ServiceAccountCredentials.from_json_keyfile_dict(
-                self.config["client_secrets"], SCOPES
-            )
-        else:
-            raise Exception("No valid credentials provided.")
-
-    def _initialize_analyticsreporting(self):
-        """Initialize an Analytics Reporting API V4 service object.
-
-        Returns
-        -------
-            An authorized Analytics Reporting API V4 service object.
-
-        """
-        return build("analyticsreporting", "v4", credentials=self.credentials)
+        return Credentials(
+            None,
+            refresh_token=self.config["refresh_token"],
+            client_id=self.config["client_id"],
+            client_secret=self.config["client_secret"],
+            token_uri="https://accounts.google.com/o/oauth2/token"
+        )
 
     def _initialize_analytics(self):
         """Initialize an Analytics Reporting API V3 service object.
@@ -125,12 +89,8 @@ class TapGoogleAnalytics(Tap):
             An authorized Analytics Reporting API V3 service object.
 
         """
-        # Initialize a Google Analytics API V3 service object and build the service
-        # object.
-        # This is needed in order to dynamically fetch the metadata for available
-        #   metrics and dimensions.
-        # (those are not provided in the Analytics Reporting API V4)
-        return build("analytics", "v3", credentials=self.credentials)
+
+        return BetaAnalyticsDataClient(credentials=self.credentials)
 
     def _get_reports_config(self):
         default_reports = Path(__file__).parent.joinpath(
@@ -168,28 +128,14 @@ class TapGoogleAnalytics(Tap):
         metrics = {}
         dimensions = {}
 
-        service = self._initialize_analytics()
+        request = GetMetadataRequest(name=f"properties/{self.config['property_id']}/metadata")
+        results = self.analytics.get_metadata(request)
 
-        results = (
-            service.metadata()
-            .columns()
-            .list(reportType="ga", quotaUser=self.quota_user)
-            .execute()
-        )
+        for metric in results.metrics:
+            metrics[metric.api_name] = metric.type_.name.replace("TYPE_", "").lower()
 
-        columns = results.get("items", [])
-
-        for column in columns:
-            column_attributes = column.get("attributes", [])
-
-            column_name = column.get("id")
-            column_type = column_attributes.get("type")
-            column_data_type = column_attributes.get("dataType")
-
-            if column_type == "METRIC":
-                metrics[column_name] = column_data_type
-            elif column_type == "DIMENSION":
-                dimensions[column_name] = column_data_type
+        for dimension in results.dimensions:
+            dimensions[dimension.api_name] = "string"
 
         return dimensions, metrics
 
@@ -227,9 +173,7 @@ class TapGoogleAnalytics(Tap):
                 )
                 sys.exit(1)
 
-            segments = report["segments"] if "segments" in report else None
-
-            self._validate_dimensions(dimensions, segments)
+            self._validate_dimensions(dimensions)
             self._validate_metrics(metrics)
 
             # ToDo: We should also check that the given metrics can be used
@@ -237,35 +181,17 @@ class TapGoogleAnalytics(Tap):
             # Not all dimensions and metrics can be queried together. Only certain
             #  dimensions and metrics can be used together to create valid combinations.
 
-    def _validate_dimensions(self, dimensions, segments):
+    def _validate_dimensions(self, dimensions):
         # check that all the dimensions are proper Google Analytics Dimensions
         for dimension in dimensions:
-            # check segments have been provided if 'ga:segment' dimension exists
-            if dimension == "ga:segment" and len(segments) > 0:
-                continue
-            elif dimension == "ga:segment" and segments is None:
-                self.logger.critical(
-                    f"'{dimension}' requires segments to be specified for this \report"
-                )
-                sys.exit(1)
-            elif (
-                not dimension.startswith(
-                    (
-                        "ga:dimension",
-                        "ga:customVarName",
-                        "ga:customVarValue",
-                        "ga:segment",
-                    )
-                )
-                and dimension not in self.dimensions_ref
-            ):
+            if dimension not in self.dimensions_ref:
                 self.logger.critical(
                     f"'{dimension}' is not a valid Google Analytics dimension"
                 )
                 self.logger.info(
                     "For details see \
-                    https://developers.google.com/analytics/\
-                        devguides/reporting/core/dimsmets"
+                    https://developers.google.com/analytics/ \
+                    devguides/reporting/data/v1/api-schema"
                 )
                 sys.exit(1)
 
@@ -307,7 +233,7 @@ class TapGoogleAnalytics(Tap):
         self.quota_user = self.config.get("quota_user", None)
         # init GA client
         self.credentials = self._initialize_credentials()
-        self.analytics = self._initialize_analyticsreporting()
+        self.analytics = self._initialize_analytics()
         # load and validate reports
         self.dimensions_ref, self.metrics_ref = self._fetch_valid_api_metadata()
         self.reports_definition = self._get_reports_config()
