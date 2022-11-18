@@ -219,11 +219,10 @@ class GoogleAnalyticsStream(Stream):
                             "metric", metric_name, self.dimensions_ref, self.metrics_ref
                         )
 
-                        if metric_type == "integer":
-                            if value==".":
-                                value = None
-                            else:
-                                value = int(value)
+                        if value==".":
+                            value = None
+                        elif metric_type == "integer":
+                            value = int(value)
                         elif metric_type == "number":
                             value = float(value)
 
