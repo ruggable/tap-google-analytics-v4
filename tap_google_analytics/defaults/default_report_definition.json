@@ -105,5 +105,19 @@
       "bounceRate",
       "engagementRate"
     ]
+  },
+  {
+    "name": "transactions",
+    "dimensions": [
+      "date",
+      "transactionId"
+    ],
+    "metrics": [
+      "sessions",
+      "totalRevenue",
+      "activeUsers",
+      "newUsers",
+      "transactions"
+    ]
   }
 ]
