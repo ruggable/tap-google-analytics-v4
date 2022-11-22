@@ -213,20 +213,20 @@ class GoogleAnalyticsStream(Stream):
 
                     record[header] = value
 
-                for i, values in enumerate(dateRangeValues):
-                    for metric_name, value in zip(metricHeaders, values.value):
-                        metric_type = self._lookup_data_type(
-                            "metric", metric_name, self.dimensions_ref, self.metrics_ref
-                        )
+                for metric_name, value in zip(metricHeaders, dateRangeValues):
+                    metric_type = self._lookup_data_type(
+                        "metric", metric_name, self.dimensions_ref, self.metrics_ref
+                    )
 
-                        if value==".":
-                            value = None
-                        elif metric_type == "integer":
-                            value = int(value)
-                        elif metric_type == "number":
+                    if metric_type == "integer":
+                        value = value.value
+                        if "." in value:
                             value = float(value)
+                        value = int(value)
+                    elif metric_type == "number":
+                        value = float(value.value)
 
-                        record[metric_name] = value
+                    record[metric_name] = value
 
                 # Also add the [start_date,end_date) used for the report
                 record["report_start_date"] = self.config.get("start_date")
