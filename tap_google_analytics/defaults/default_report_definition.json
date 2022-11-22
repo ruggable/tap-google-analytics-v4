@@ -114,7 +114,6 @@
     ],
     "metrics": [
       "sessions",
-      "totalRevenue",
       "activeUsers",
       "newUsers",
       "transactions"
