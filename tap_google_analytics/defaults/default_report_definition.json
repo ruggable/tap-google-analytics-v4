@@ -109,14 +109,16 @@
   {
     "name": "transactions",
     "dimensions": [
-      "date",
-      "transactionId"
-    ],
-    "metrics": [
-      "sessions",
+      "date"
+      ],
+      "metrics": [
       "activeUsers",
+      "averageRevenuePerUser",
       "newUsers",
+      "purchaseRevenue",
+      "sessions",
+      "totalRevenue",
       "transactions"
-    ]
+      ]
   }
 ]
