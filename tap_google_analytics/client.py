@@ -18,7 +18,6 @@ from tap_google_analytics.error import (
 from google.analytics.data_v1beta.types import DateRange
 from google.analytics.data_v1beta.types import Metric
 from google.analytics.data_v1beta.types import RunReportRequest
-from google.analytics.data_v1beta.types import RunReportRequest
 
 class GoogleAnalyticsStream(Stream):
     """Stream class for GoogleAnalytics streams."""
