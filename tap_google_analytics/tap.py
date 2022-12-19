@@ -8,7 +8,8 @@ from typing import List, Tuple
 # Service Account - Google Analytics Authorization
 from google.oauth2.service_account import Credentials as OAuthCredentials
 # OAuth - Google Analytics Authorization
-from google.oauth2.credentials import Credentials as ServiceAccountCredentials
+# from google.oauth2.credentials import Credentials as ServiceAccountCredentials
+from google.oauth2 import service_account
 
 from singer_sdk import Stream, Tap
 from singer_sdk import typing as th  # JSON schema typing helpers
