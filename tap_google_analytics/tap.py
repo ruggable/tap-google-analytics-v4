@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import List, Tuple
 
 # Service Account - Google Analytics Authorization
-from google.oauth2.service_account import Credentials
+from google.oauth2.service_account import Credentials as OAuthCredentials
 # OAuth - Google Analytics Authorization
-from google.oauth2.credentials import Credentials
+from google.oauth2.credentials import Credentials as ServiceAccountCredentials
 
 from singer_sdk import Stream, Tap
 from singer_sdk import typing as th  # JSON schema typing helpers
@@ -91,7 +91,7 @@ class TapGoogleAnalytics(Tap):
 
     def _initialize_credentials(self):
         if self.config.get("oauth_credentials"):
-            return Credentials(
+            return OAuthCredentials(
                 None,
                 refresh_token=self.config["refresh_token"],
                 client_id=self.config["client_id"],
@@ -99,7 +99,7 @@ class TapGoogleAnalytics(Tap):
                 token_uri="https://accounts.google.com/o/oauth2/token"
             )
         elif self.config.get("key_file_location"):
-            return Credentials.from_service_account_file(
+            return ServiceAccountCredentials.from_service_account_file(
                 self.config["key_file_location"], SCOPES
             )
         else:
