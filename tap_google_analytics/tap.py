@@ -8,8 +8,10 @@ from typing import List, Tuple
 from google.oauth2.credentials import Credentials
 from singer_sdk import Stream, Tap
 from singer_sdk import typing as th  # JSON schema typing helpers
-
+# OAuth - Google Analytics Authorization
 from tap_google_analytics.client import GoogleAnalyticsStream
+# Service Account - Google Analytics Authorization
+from oauth2client.service_account import ServiceAccountCredentials
 
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import GetMetadataRequest
@@ -35,29 +37,43 @@ class TapGoogleAnalytics(Tap):
             description="Google Analytics Property ID",
             required=True,
         ),
+        # Service Account
+        th.Property(
+            "client_secrets",
+            th.ObjectType(),
+            description="Google Analytics Client Secrets Dictionary",
+        ),
+        th.Property(
+            "key_file_location",
+            th.StringType,
+            description="File Path to Google Analytics Client Secrets",
+        ),
         # OAuth
         th.Property(
-            "access_token",
-            th.StringType,
-            description="Google Analytics Access Token",
-        ),
-        th.Property(
-            "refresh_token",
-            th.StringType,
-            required=True,
-            description="Google Analytics Refresh Token",
-        ),
-        th.Property(
-            "client_id",
-            th.StringType,
-            required=True,
-            description="Google Analytics Client ID",
-        ),
-        th.Property(
-            "client_secret",
-            th.StringType,
-            required=True,
-            description="Google Analytics Client Secret",
+            "oauth_credentials",
+            th.ObjectType(
+                th.Property(
+                    "access_token",
+                    th.StringType,
+                    description="Google Analytics Access Token",
+                ),
+                th.Property(
+                    "refresh_token",
+                    th.StringType,
+                    description="Google Analytics Refresh Token",
+                ),
+                th.Property(
+                    "client_id",
+                    th.StringType,
+                    description="Google Analytics Client ID",
+                ),
+                th.Property(
+                    "client_secret",
+                    th.StringType,
+                    description="Google Analytics Client Secret",
+                ),
+            ),
+            description="Google Analytics OAuth Credentials",
         ),
         # Optional
         th.Property(
@@ -73,13 +89,25 @@ class TapGoogleAnalytics(Tap):
     ).to_dict()
 
     def _initialize_credentials(self):
-        return Credentials(
-            None,
-            refresh_token=self.config["refresh_token"],
-            client_id=self.config["client_id"],
-            client_secret=self.config["client_secret"],
-            token_uri="https://accounts.google.com/o/oauth2/token"
-        )
+        if self.config.get("oauth_credentials"):
+            return Credentials(
+                None,
+                refresh_token=self.config["refresh_token"],
+                client_id=self.config["client_id"],
+                client_secret=self.config["client_secret"],
+                token_uri="https://accounts.google.com/o/oauth2/token"
+            )
+        elif self.config.get("key_file_location"):
+            return ServiceAccountCredentials.from_json_keyfile_name(
+                self.config["key_file_location"], SCOPES
+            )
+        elif self.config.get("client_secrets"):
+            return ServiceAccountCredentials.from_json_keyfile_dict(
+                self.config["client_secrets"], SCOPES
+            )
+        else:
+            raise Exception("No valid credentials provided.")
+        
 
     def _initialize_analytics(self):
         """Initialize an Analytics Reporting API V3 service object.
