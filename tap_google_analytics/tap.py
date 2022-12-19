@@ -100,7 +100,7 @@ class TapGoogleAnalytics(Tap):
                 token_uri="https://accounts.google.com/o/oauth2/token"
             )
         elif self.config.get("key_file_location"):
-            return ServiceAccountCredentials.from_service_account_file(
+            return service_account.Credentials.from_service_account_file(
                 self.config["key_file_location"], SCOPES
             )
         else:
