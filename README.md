@@ -17,8 +17,7 @@ Built with the [Meltano SDK](https://sdk.meltano.com) for Singer Taps and Target
 | Setting          | Required | Default | Description |
 |:-----------------|:--------:|:-------:|:------------|
 | start_date       | True     | None    | The earliest record date to sync |
-| view_id          | True     | None    | Google Analytics View ID |
-| client_secrets   | False    | None    | Google Analytics Client Secrets Dictionary |
+| property_id      | True     | None    | Google Analytics View ID |
 | key_file_location| False    | None    | File Path to Google Analytics Client Secrets |
 | oauth_credentials| False    | None    | Google Analytics OAuth Credentials |
 | reports          | False    | None    | Google Analytics Reports Definition |
@@ -94,14 +93,13 @@ A sample config for `tap-google-analytics` might look like this:
 One of the credentials keys must exist:
 
 - key_file_location
-- client_secrets
 - oauth_credentials
 
 
 **sample_config.json**
 ```js
 {
-  "view_id": "123456789",
+  "property_id": "123456789",
   "reports": "reports.json",
   "start_date": "2019-05-01T00:00:00Z",
   "end_date": "2019-06-01T00:00:00Z",
