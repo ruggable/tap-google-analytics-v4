@@ -100,8 +100,8 @@ class TapGoogleAnalytics(Tap):
                 token_uri="https://accounts.google.com/o/oauth2/token"
             )
         elif self.config.get("key_file_location"):
-            return service_account.Credentials.from_service_account_file(
-                self.config["key_file_location"], SCOPES
+            return service_account.Credentials.from_service_account_info(
+                json.load(open(self.config["key_file_location"]))
             )
         else:
             raise Exception("No valid credentials provided.")
