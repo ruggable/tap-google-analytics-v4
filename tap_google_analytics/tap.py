@@ -5,14 +5,15 @@ import sys
 from pathlib import Path
 from typing import List, Tuple
 
+# Service Account - Google Analytics Authorization
+from google.oauth2.service_account import Credentials
+# OAuth - Google Analytics Authorization
 from google.oauth2.credentials import Credentials
+
 from singer_sdk import Stream, Tap
 from singer_sdk import typing as th  # JSON schema typing helpers
-# OAuth - Google Analytics Authorization
-from tap_google_analytics.client import GoogleAnalyticsStream
-# Service Account - Google Analytics Authorization
-from oauth2client.service_account import ServiceAccountCredentials
 
+from tap_google_analytics.client import GoogleAnalyticsStream
 from google.analytics.data_v1beta import BetaAnalyticsDataClient
 from google.analytics.data_v1beta.types import GetMetadataRequest
 
@@ -98,12 +99,8 @@ class TapGoogleAnalytics(Tap):
                 token_uri="https://accounts.google.com/o/oauth2/token"
             )
         elif self.config.get("key_file_location"):
-            return ServiceAccountCredentials.from_json_keyfile_name(
+            return service_account.Credentials.from_service_account_file(
                 self.config["key_file_location"], SCOPES
-            )
-        elif self.config.get("client_secrets"):
-            return ServiceAccountCredentials.from_json_keyfile_dict(
-                self.config["client_secrets"], SCOPES
             )
         else:
             raise Exception("No valid credentials provided.")
