@@ -1,6 +1,7 @@
-# `tap-google-analytics`
+# `tap-google-analytics` Meltano Plugin [Hotglue Variant]
 
-GoogleAnalytics tap is a Singer tap for extracting data from the [Google Analytics Reporting API](https://developers.google.com/analytics/devguides/reporting/core/v4/). It produces JSON-formatted data following the Singer spec.
+`tap-google-analytics` tap is a Singer tap for extracting data from the [Google Analytics Data API (GA4)](https://developers.google.com/analytics/devguides/reporting/data/v1).
+It produces JSON-formatted data following the Singer spec. This tap is produced by [Hotglue](https://gitlab.com/hotglue), with the addition of Google Sevice Account autorization provided by [@connor-ruggable](https://github.com/connor-ruggable).
 
 Built with the [Meltano SDK](https://sdk.meltano.com) for Singer Taps and Targets.
 
@@ -17,8 +18,8 @@ Built with the [Meltano SDK](https://sdk.meltano.com) for Singer Taps and Target
 | Setting          | Required | Default | Description |
 |:-----------------|:--------:|:-------:|:------------|
 | start_date       | True     | None    | The earliest record date to sync |
-| property_id      | True     | None    | Google Analytics View ID |
-| key_file_location| False    | None    | File Path to Google Analytics Client Secrets |
+| property_id      | True     | None    | Google Analytics Property ID |
+| key_file_location| False    | None    | File Path to Google Analytics Client Secrets (Service Account) |
 | oauth_credentials| False    | None    | Google Analytics OAuth Credentials |
 | reports          | False    | None    | Google Analytics Reports Definition |
 | end_date         | False    | None    | The last record date to sync |
