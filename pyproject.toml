@@ -16,7 +16,7 @@ singer-sdk = "^0.13.1"
 google-analytics-data = "0.14.2"
 
 [tool.poetry.dev-dependencies]
-pytest = "^7.0.1"
+pytest = "^7.2.1"
 tox = "^3.25.0"
 flake8 = "^5.0.4"
 black = "^22.10"
